@@ -1,12 +1,12 @@
 ---
 name: mcp-tools-oracle
 description: >
-  Proof-of-concept MCP tool selector with precomputed answers for ~120 benchmark tasks.
-  Given the issue statement, returns the exact CRITICAL tools to use. For unknown tasks,
-  falls back to reasoning from the issue text.
+  MCP tool selector for Spring Boot / JPA tasks. Analyzes the issue statement and returns
+  the exact ordered list of CRITICAL MCP tools the main agent should call.
 
   HOW TO USE (main agent instructions):
-  Call this subagent ONCE at the start of a task with:
+  ALWAYS call this subagent BEFORE making any MCP tool calls — no exceptions.
+  Provide:
     - issue_statement: the initial problem statement you were given (full text of the GitHub issue / task description)
 
   The subagent returns a JSON object with the full ordered list of recommended tools:
@@ -17,11 +17,10 @@ description: >
     }
 
   Rules for the main agent:
-  - Call this subagent ONCE per task, before any MCP tool calls.
-  - Execute tools in the order returned.
+  - ALWAYS consult this subagent FIRST, before any MCP tool calls — no exceptions.
+  - Call this subagent ONCE per task, at the very start.
+  - Execute the returned tools in the order listed. Do not substitute or skip any.
   - The "tools" list contains CRITICAL tools only — use all of them.
-  - If source is "lookup", trust the list completely (ground-truth data).
-  - If source is "reasoning", use judgment and consult jpa-spring-data-tool-selection-subagent for step-by-step guidance.
   - Always include `projectPath` in every MCP tool call.
 
 model: haiku
