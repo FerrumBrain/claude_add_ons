@@ -2,13 +2,12 @@
 name: mcp-tools-oracle
 description: >
   Proof-of-concept MCP tool selector with precomputed answers for ~120 benchmark tasks.
-  Given an instance_id, returns the exact CRITICAL tools to use. For unknown tasks,
-  falls back to reasoning from the problem statement.
+  Given the issue statement, returns the exact CRITICAL tools to use. For unknown tasks,
+  falls back to reasoning from the issue text.
 
   HOW TO USE (main agent instructions):
   Call this subagent ONCE at the start of a task with:
-    - instance_id: the benchmark task identifier (e.g., "dpaia__feature__service-21")
-    - problem_statement: the full task description (used as fallback if instance_id unknown)
+    - issue_statement: the initial problem statement you were given (full text of the GitHub issue / task description)
 
   The subagent returns a JSON object with the full ordered list of recommended tools:
     {
@@ -33,8 +32,10 @@ model: haiku
 You are a lookup-based tool recommender for Spring Boot / JPA benchmark tasks.
 You have NO access to tools and must NOT attempt to call them.
 
-Your job: given an `instance_id`, find it in the lookup table below and return its
-precomputed CRITICAL tools. If not found, reason from the `problem_statement`.
+Your job: given an `issue_statement`, find the best matching entry in the lookup table
+below and return its precomputed CRITICAL tools. Match by semantic similarity — look for
+key phrases, entity names, or action verbs. If no confident match is found, fall back to
+reasoning from the issue text using the rules at the bottom.
 
 ## Response Format
 
@@ -44,16 +45,16 @@ Always respond with exactly this JSON structure:
 {
   "tools": ["tool1", "tool2"],
   "source": "lookup",
-  "description": "Precomputed answer for instance dpaia__feature__service-21"
+  "description": "Matched: '<first few words of matched entry>'"
 }
 ```
 
-For unknown instance_ids:
+For unmatched issues:
 ```json
 {
   "tools": ["tool1", "tool2"],
   "source": "reasoning",
-  "description": "Instance not in lookup table. Inferred from problem statement."
+  "description": "No confident match found. Inferred from issue statement."
 }
 ```
 
@@ -62,142 +63,140 @@ For tasks requiring no MCP tools:
 {
   "tools": [],
   "source": "lookup",
-  "description": "No CRITICAL MCP tools needed for this task."
+  "description": "Matched: '<entry>'. No CRITICAL MCP tools needed."
 }
 ```
 
-## Lookup Table (instance_id → CRITICAL tools)
+## Lookup Table (issue summary → CRITICAL tools)
 
-```json
-{
-  "dpaia__empty__maven__springboot3-1": ["create_jpa_entity", "generate_jpa_entity", "create_spring_data_repository", "generate_jpa_repository"],
-  "dpaia__empty__maven__springboot3-3": ["create_jpa_entity", "generate_jpa_entity", "create_spring_data_repository", "generate_jpa_repository", "generate_jpa_repository_method", "generate_jpql_repository_method", "create_jpa_query"],
-  "dpaia__feature__service-12": ["get_file_text_by_path", "replace_text_in_file", "execute_run_configuration", "execute_terminal_command"],
-  "dpaia__feature__service-13": ["wrap_transaction", "create_jpa_query", "generate_jpa_repository_method", "generate_jpql_repository_method"],
-  "dpaia__feature__service-16": ["add_spring_cache", "wrap_method_with_cache", "implement_distributed_cache"],
-  "dpaia__feature__service-2": ["create_or_update_entity_attribute", "generate_db_migration", "find_jpa_entities", "get_jpa_entity_by_name", "find_liquibase_scripts"],
-  "dpaia__feature__service-20": ["create_jpa_entity", "create_or_update_entity_attribute", "create_spring_data_repository", "generate_jpa_entity", "generate_jpa_repository", "generate_jpa_repository_method", "add_enum_to_entity", "add_unique_constraint", "generate_db_migration"],
-  "dpaia__feature__service-21": ["generate_jpa_repository_method", "create_jpa_query", "wrap_transaction", "generate_integration_tests"],
-  "dpaia__feature__service-22": ["generate_jpa_repository_method", "create_jpa_query", "wrap_transaction", "generate_integration_tests"],
-  "dpaia__feature__service-25": ["create_or_update_entity_attribute", "generate_db_migration", "change_jpa_entity_attribute", "refactor_dto"],
-  "dpaia__feature__service-26": ["generate_integration_tests", "create_jpa_query", "generate_jpa_repository_method", "wrap_transaction"],
-  "dpaia__feature__service-29": ["generate_jpa_entity", "create_jpa_entity", "generate_jpa_repository", "create_spring_data_repository", "generate_db_migration", "generate_global_exception_handler", "create_jpa_query", "generate_jpa_repository_method", "generate_jpql_repository_method"],
-  "dpaia__feature__service-3": ["refactor_dto", "change_jpa_entity_attribute", "create_or_update_entity_attribute"],
-  "dpaia__feature__service-30": [],
-  "dpaia__feature__service-31": ["generate_jpa_repository_method", "rename_refactoring", "create_jpa_query"],
-  "dpaia__feature__service-33": ["generate_integration_tests", "generate_test_scenarios", "create_jpa_query", "generate_jpa_repository_method", "wrap_transaction", "generate_global_exception_handler"],
-  "dpaia__feature__service-4": ["generate_dto", "generate_dto_mapper"],
-  "dpaia__feature__service-40": ["generate_db_migration", "generate_jpa_entity", "create_jpa_entity", "generate_jpa_repository", "create_spring_data_repository", "generate_integration_tests"],
-  "dpaia__feature__service-43": ["create_jpa_entity", "generate_jpa_entity", "create_spring_data_repository", "generate_jpa_repository", "generate_db_migration", "create_jpa_query", "generate_jpa_repository_method"],
-  "dpaia__feature__service-44": ["generate_integration_tests"],
-  "dpaia__feature__service-45": ["generate_integration_tests"],
-  "dpaia__feature__service-47": ["generate_domain_event", "generate_event_listener", "publish_event_in_service", "generate_integration_tests"],
-  "dpaia__feature__service-48": ["generate_event_listener", "find_config_property", "schedule_task"],
-  "dpaia__feature__service-49": ["generate_event_listener", "generate_domain_event", "generate_integration_tests"],
-  "dpaia__feature__service-5": ["generate_integration_tests", "create_jpa_query", "generate_jpa_repository_method", "wrap_transaction"],
-  "dpaia__feature__service-52": ["generate_event_listener", "publish_event_in_service", "generate_integration_tests", "wrap_transaction"],
-  "dpaia__feature__service-54": ["generate_domain_event", "generate_event_listener", "publish_event_in_service"],
-  "dpaia__feature__service-57": ["generate_db_migration", "generate_jpa_entity", "create_jpa_entity", "generate_event_listener", "generate_jpa_repository", "create_spring_data_repository"],
-  "dpaia__feature__service-59": ["generate_db_migration", "generate_jpa_entity", "generate_jpa_repository", "generate_jpql_repository_method", "generate_event_listener", "generate_integration_tests"],
-  "dpaia__feature__service-6": ["generate_integration_tests", "generate_security_test"],
-  "dpaia__feature__service-7": ["scan_endpoints_for_undocumented"],
-  "dpaia__feature__service-77": ["generate_dto", "generate_dto_mapper", "generate_jpa_repository_method", "generate_integration_tests"],
-  "dpaia__feature__service-78": ["generate_dto", "generate_integration_tests"],
-  "dpaia__feature__service-79": ["generate_integration_tests", "create_jpa_query", "generate_jpa_repository_method", "wrap_transaction"],
-  "dpaia__feature__service-8": ["generate_jpa_repository_method", "generate_jpql_repository_method", "create_jpa_query", "generate_integration_tests"],
-  "dpaia__feature__service-80": ["create_jpa_query", "generate_jpa_repository_method", "generate_jpql_repository_method", "generate_integration_tests"],
-  "dpaia__feature__service-81": ["create_jpa_entity", "generate_jpa_entity", "create_spring_data_repository", "generate_jpa_repository", "generate_db_migration", "change_jpa_entity_attribute", "create_or_update_entity_attribute"],
-  "dpaia__feature__service-82": ["create_jpa_entity", "generate_jpa_entity", "create_or_update_entity_attribute", "add_enum_to_entity", "create_spring_data_repository", "generate_jpa_repository", "generate_jpa_repository_method", "generate_db_migration", "find_jpa_entities", "get_jpa_entity_by_name"],
-  "dpaia__feature__service-83": ["generate_integration_tests", "generate_jpa_repository_method", "create_jpa_query", "wrap_transaction", "generate_service_validation"],
-  "dpaia__feature__service-86": ["generate_dto", "generate_dto_mapper", "generate_jpa_repository_method", "generate_jpql_repository_method", "create_jpa_query", "wrap_transaction", "generate_integration_tests"],
-  "dpaia__feature__service-87": ["generate_integration_tests", "wrap_transaction", "generate_jpa_repository_method"],
-  "dpaia__feature__service-88": ["generate_integration_tests", "create_jpa_query", "generate_jpa_repository_method", "wrap_transaction"],
-  "dpaia__feature__service-89": ["generate_jpa_repository_method", "generate_jpql_repository_method", "generate_integration_tests", "create_jpa_query"],
-  "dpaia__jhipster__sample__app-1": ["create_jpa_entity", "create_or_update_entity_attribute", "generate_jpa_repository", "create_jpa_query", "generate_jpa_repository_method", "generate_db_migration", "find_liquibase_scripts", "create_custom_validator", "generate_service_validation", "find_jpa_entities", "get_jpa_entity_by_name", "change_jpa_entity_attribute"],
-  "dpaia__jhipster__sample__app-2": ["generate_db_migration", "find_liquibase_scripts", "generate_integration_tests", "wrap_transaction"],
-  "dpaia__jhipster__sample__app-3": ["search_in_files_by_text", "replace_text_in_file", "rename_refactoring", "find_files_by_name_keyword"],
-  "dpaia__jhipster__sample__app-4": [],
-  "dpaia__piggymetrics-4": ["get_project_dependencies", "find_config_property"],
-  "dpaia__piggymetrics-6": ["generate_integration_tests"],
-  "dpaia__piggymetrics-8": ["add_spring_cache", "wrap_method_with_cache", "add_cache_eviction", "generate_integration_tests"],
-  "dpaia__spring__boot__microshop-1": ["generate_dto", "generate_dto_mapper"],
-  "dpaia__spring__boot__microshop-10": [],
-  "dpaia__spring__boot__microshop-11": ["generate_integration_tests", "generate_test_scenarios", "create_custom_validator", "generate_validation_rule"],
-  "dpaia__spring__boot__microshop-13": ["generate_db_migration", "find_liquibase_scripts"],
-  "dpaia__spring__boot__microshop-14": ["scan_endpoints_for_undocumented", "generate_integration_tests"],
-  "dpaia__spring__boot__microshop-15": ["generate_dto_mapper"],
-  "dpaia__spring__boot__microshop-16": ["generate_dto_mapper"],
-  "dpaia__spring__boot__microshop-17": ["generate_dto_mapper"],
-  "dpaia__spring__boot__microshop-18": ["get_project_dependencies", "find_jpa_entities", "find_jpa_entity", "find_spring_data_repositories", "get_jpa_entity_by_name"],
-  "dpaia__spring__boot__microshop-19": ["generate_domain_event", "generate_event_listener", "publish_event_in_service", "find_config_property"],
-  "dpaia__spring__boot__microshop-2": ["generate_global_exception_handler", "create_custom_validator", "generate_service_validation", "inject_service_validation"],
-  "dpaia__spring__boot__microshop-20": ["find_config_property", "generate_integration_tests"],
-  "dpaia__spring__boot__microshop-21": ["generate_global_exception_handler"],
-  "dpaia__spring__boot__microshop-24": ["generate_db_migration", "create_or_update_entity_attribute", "change_jpa_entity_attribute"],
-  "dpaia__spring__boot__microshop-25": ["generate_integration_tests", "scan_endpoints_for_undocumented"],
-  "dpaia__spring__boot__microshop-26": ["generate_integration_tests"],
-  "dpaia__spring__boot__microshop-27": ["generate_integration_tests", "create_jpa_query", "generate_jpa_repository_method", "wrap_transaction", "inject_service_validation", "generate_service_validation", "create_custom_validator", "generate_validation_rule"],
-  "dpaia__spring__boot__microshop-3": ["find_config_property"],
-  "dpaia__spring__boot__microshop-4": ["generate_cross_service_client", "find_config_property"],
-  "dpaia__spring__boot__microshop-5": ["scan_endpoints_for_undocumented"],
-  "dpaia__spring__boot__microshop-6": ["create_jpa_entity", "create_spring_data_repository", "generate_jpa_entity", "generate_jpa_repository", "enable_optimistic_locking", "add_unique_constraint", "create_jpa_query", "generate_jpa_repository_method"],
-  "dpaia__spring__boot__microshop-7": ["change_jpa_entity_attribute", "create_or_update_entity_attribute", "generate_test_scenarios", "generate_integration_tests"],
-  "dpaia__spring__boot__microshop-8": ["generate_db_migration", "generate_integration_tests"],
-  "dpaia__spring__boot__microshop-9": ["create_or_update_entity_attribute", "generate_db_migration"],
-  "dpaia__spring__llm__chat-2": ["generate_jpa_repository", "create_spring_data_repository", "generate_integration_tests", "generate_test_scenarios"],
-  "dpaia__spring__petclinic-11": ["generate_integration_tests", "create_jpa_query", "generate_jpa_repository_method", "wrap_transaction"],
-  "dpaia__spring__petclinic-13": ["create_jpa_entity", "generate_jpa_entity", "create_or_update_entity_attribute", "create_spring_data_repository", "generate_jpa_repository"],
-  "dpaia__spring__petclinic-16": ["generate_integration_tests"],
-  "dpaia__spring__petclinic-19": ["generate_integration_tests", "create_jpa_query", "generate_jpa_repository_method", "wrap_transaction"],
-  "dpaia__spring__petclinic-20": ["create_jpa_entity", "generate_jpa_entity", "create_or_update_entity_attribute", "create_spring_data_repository", "generate_jpa_repository", "generate_db_migration"],
-  "dpaia__spring__petclinic-22": ["create_or_update_entity_attribute", "generate_integration_tests"],
-  "dpaia__spring__petclinic-27": ["find_jpa_entities", "get_jpa_entity_by_name", "find_spring_data_repositories", "create_spring_data_repository", "generate_jpa_repository"],
-  "dpaia__spring__petclinic-29": ["generate_jpa_repository_method", "generate_jpql_repository_method", "create_jpa_query"],
-  "dpaia__spring__petclinic-3": ["create_or_update_entity_attribute", "change_jpa_entity_attribute", "create_custom_validator", "generate_validation_rule"],
-  "dpaia__spring__petclinic-32": [],
-  "dpaia__spring__petclinic-36": [],
-  "dpaia__spring__petclinic-41": ["create_custom_validator"],
-  "dpaia__spring__petclinic-43": ["generate_global_exception_handler", "generate_dto"],
-  "dpaia__spring__petclinic-51": ["find_config_property"],
-  "dpaia__spring__petclinic-65": ["get_file_text_by_path", "replace_text_in_file", "create_new_file", "execute_terminal_command"],
-  "dpaia__spring__petclinic-7": ["generate_integration_tests", "create_jpa_query", "generate_jpa_repository_method", "wrap_transaction"],
-  "dpaia__spring__petclinic-71": ["find_jpa_entities", "get_jpa_entity_by_name", "find_spring_data_repositories", "create_spring_data_repository", "generate_jpa_repository"],
-  "dpaia__spring__petclinic-72": ["find_spring_data_repositories", "generate_jpa_repository", "create_spring_data_repository", "find_jpa_entities", "get_jpa_entity_by_name"],
-  "dpaia__spring__petclinic-73": ["wrap_transaction", "generate_integration_tests"],
-  "dpaia__spring__petclinic-74": [],
-  "dpaia__spring__petclinic-75": ["generate_global_exception_handler"],
-  "dpaia__spring__petclinic-76": ["generate_jpa_repository_method", "generate_jpql_repository_method", "create_jpa_query"],
-  "dpaia__spring__petclinic-79": ["get_file_problems", "find_config_property"],
-  "dpaia__spring__petclinic-8": ["create_jpa_entity", "create_spring_data_repository", "generate_jpa_entity", "generate_jpa_repository"],
-  "dpaia__spring__petclinic-9": ["generate_dto", "generate_dto_mapper", "refactor_dto"],
-  "dpaia__spring__petclinic-90": ["get_jpa_entity_by_name", "find_jpa_entities", "find_spring_data_repositories", "generate_jpa_repository_method", "generate_jpql_repository_method", "create_jpa_query", "generate_integration_tests"],
-  "dpaia__spring__petclinic__microservices-1": ["generate_integration_tests", "create_new_file", "replace_text_in_file", "get_file_text_by_path"],
-  "dpaia__spring__petclinic__microservices-5": ["generate_integration_tests", "generate_cross_service_client"],
-  "dpaia__spring__petclinic__rest-14": ["search_in_files_by_text", "replace_text_in_file"],
-  "dpaia__spring__petclinic__rest-17": ["generate_integration_tests", "create_or_update_entity_attribute", "change_jpa_entity_attribute"],
-  "dpaia__spring__petclinic__rest-18": ["generate_integration_tests", "find_config_property"],
-  "dpaia__spring__petclinic__rest-19": ["generate_integration_tests", "find_config_property"],
-  "dpaia__spring__petclinic__rest-20": ["generate_global_exception_handler", "generate_dto", "generate_integration_tests"],
-  "dpaia__spring__petclinic__rest-21": ["generate_event_listener", "find_config_property"],
-  "dpaia__spring__petclinic__rest-22": ["generate_integration_tests", "generate_security_test"],
-  "dpaia__spring__petclinic__rest-23": ["create_custom_validator", "generate_service_validation", "inject_service_validation", "generate_validation_rule"],
-  "dpaia__spring__petclinic__rest-24": ["generate_integration_tests", "create_jpa_query", "generate_jpa_repository_method", "wrap_transaction"],
-  "dpaia__spring__petclinic__rest-25": ["create_custom_validator", "generate_validation_rule", "create_jpa_query", "generate_jpa_repository_method", "generate_jpql_repository_method"],
-  "dpaia__spring__petclinic__rest-3": ["add_spring_cache", "add_cache_eviction", "wrap_method_with_cache", "schedule_task", "generate_integration_tests"],
-  "dpaia__spring__petclinic__rest-35": ["generate_global_exception_handler", "generate_integration_tests", "generate_test_scenarios"],
-  "dpaia__spring__petclinic__rest-37": ["generate_jpa_repository_method", "create_jpa_query", "generate_integration_tests"],
-  "dpaia__spring__petclinic__rest-38": ["generate_file_deletion_logic"],
-  "dpaia__spring__petclinic__rest-4": ["add_spring_cache", "wrap_method_with_cache", "add_cache_eviction"],
-  "dpaia__spring__petclinic__rest-41": ["create_new_file", "replace_text_in_file", "execute_terminal_command", "execute_run_configuration"],
-  "dpaia__spring__petclinic__rest-43": ["generate_integration_tests"],
-  "dpaia__spring__petclinic__rest-6": ["generate_jpa_repository_method", "generate_jpql_repository_method", "wrap_transaction", "generate_integration_tests"],
-  "dpaia__spring__petclinic__rest-7": ["add_spring_cache", "wrap_method_with_cache", "add_cache_eviction", "implement_distributed_cache", "find_config_property", "generate_integration_tests"]
-}
-```
+Each entry is: `"<first ~110 chars of the issue>" → [tools]`
 
-## Fallback Reasoning (when instance_id is not in lookup)
+Match the provided `issue_statement` against these summaries by semantic similarity.
 
-If the `instance_id` is not found in the lookup table, infer tools from the `problem_statement` using these rules:
+- "Implement a secure JWT authentication system for the Spring Boot application" → [create_jpa_entity, generate_jpa_entity, create_spring_data_repository, generate_jpa_repository]
+- "Define a domain entity `Product` in the `eval" → [create_jpa_entity, generate_jpa_entity, create_spring_data_repository, generate_jpa_repository, generate_jpa_repository_method, generate_jpql_repository_method, create_jpa_query]
+- "Tests in test class `FeatureServiceTest` fail with error ``` org" → [get_file_text_by_path, replace_text_in_file, execute_run_configuration, execute_terminal_command]
+- "Test `shouldGetFeaturesByReleaseCode` in test class `FeatureControllerTests` fails with error ``` jakarta" → [wrap_transaction, create_jpa_query, generate_jpa_repository_method, generate_jpql_repository_method]
+- "Configure Ehcache as the cache provider" → [add_spring_cache, wrap_method_with_cache, implement_distributed_cache]
+- "Update the Feature entity to replace the assignedTo field with a relationship to a Developer entity" → [create_or_update_entity_attribute, generate_db_migration, find_jpa_entities, get_jpa_entity_by_name, find_liquibase_scripts]
+- "Add a 'user reactions' feature for the FeatureTracker application" → [create_jpa_entity, create_or_update_entity_attribute, create_spring_data_repository, generate_jpa_entity, generate_jpa_repository, generate_jpa_repository_method, add_enum_to_entity, add_unique_constraint, generate_db_migration]
+- "1. Add /api/all-features Endpoint to FeatureController that retrieves all features" → [generate_integration_tests, create_jpa_query, generate_jpa_repository_method, wrap_transaction]
+- "Implement an optional parent-child relationship for the Release entity, allowing releases to reference a parent" → [create_or_update_entity_attribute, generate_db_migration, change_jpa_entity_attribute, refactor_dto]
+- "Change the feature handling to use developer ID instead of the assignedTo field" → [refactor_dto, change_jpa_entity_attribute, create_or_update_entity_attribute]
+- "Update the test data in the SQL file to reflect changes in the product schema" → []
+- "Update the FeatureController to allow fetching features by product code in addition to release code" → [generate_jpa_repository_method, rename_refactoring, create_jpa_query]
+- "Add error handling for the case where a product is not found during the update process" → [generate_integration_tests, generate_test_scenarios, create_jpa_query, generate_jpa_repository_method, wrap_transaction, generate_global_exception_handler]
+- "Create a Data Transfer Object (DTO) for the Developer entity" → [generate_dto, generate_dto_mapper]
+- "Modify the existing Spring Boot application to use a database-backed user password authentication system" → [generate_db_migration, generate_jpa_entity, create_jpa_entity, generate_jpa_repository, create_spring_data_repository, generate_integration_tests]
+- "Set up login form user authentication using database storage with Spring Data JPA, including password encryption" → [create_jpa_entity, generate_jpa_entity, create_spring_data_repository, generate_jpa_repository, generate_db_migration, create_jpa_query, generate_jpa_repository_method]
+- "Implement correlation ID in the feature-service microservice to enhance observability" → [generate_integration_tests]
+- "Create a custom Spring ApplicationEvent" → [generate_domain_event, generate_event_listener, publish_event_in_service, generate_integration_tests]
+- "Enhance the event handling system to support asynchronous execution using @Async on event listeners" → [generate_event_listener, find_config_property, schedule_task]
+- "Extend FeatureCreatedEvent to include the creator's role, and implement an @EventListener" → [generate_event_listener, generate_domain_event, generate_integration_tests]
+- "Generate CRUD Developer controller, service and repository" → [generate_integration_tests, create_jpa_query, generate_jpa_repository_method, wrap_transaction]
+- "Refactor feature creation logic to publish FeatureCreatedEvent via @TransactionalEventListener" → [generate_event_listener, publish_event_in_service, generate_integration_tests, wrap_transaction]
+- "Define a base FeatureEvent class that represents a generic domain event related to a feature" → [generate_domain_event, generate_event_listener, publish_event_in_service]
+- "Persist all feature-related events to an event store" → [generate_db_migration, generate_jpa_entity, generate_jpa_repository, generate_jpql_repository_method, generate_event_listener, generate_integration_tests]
+- "Restrict access to the Developer Controller so that only users with the ADMIN role" → [generate_integration_tests, generate_security_test]
+- "Add Swagger annotations to the DeveloperController class to document the API endpoints" → [scan_endpoints_for_undocumented]
+- "Implement CRUD API endpoints for managing tags within the application" → [generate_dto, generate_dto_mapper, generate_jpa_repository_method, generate_integration_tests]
+- "Add API endpoints to assign and remove tags from multiple features" → [generate_dto, generate_integration_tests]
+- "Implement a new API endpoint that allows users to search for tags by name" → [generate_integration_tests, create_jpa_query, generate_jpa_repository_method, wrap_transaction]
+- "Implement pagination for the /api/features endpoint" → [generate_jpa_repository_method, generate_jpql_repository_method, create_jpa_query, generate_integration_tests]
+- "Add functionality to the feature API endpoint to filter features by tags" → [create_jpa_query, generate_jpa_repository_method, generate_jpql_repository_method, generate_integration_tests]
+- "Create a new Category entity in com" → [create_jpa_entity, generate_jpa_entity, create_spring_data_repository, generate_jpa_repository, generate_db_migration, change_jpa_entity_attribute, create_or_update_entity_attribute]
+- "Implement the core business logic and API endpoints for creating, updating, and deleting features" → [generate_integration_tests, generate_jpa_repository_method, create_jpa_query, wrap_transaction, generate_service_validation]
+- "Implement CRUD API endpoints for managing categories in the application" → [generate_dto, generate_dto_mapper, generate_jpa_repository_method, generate_jpql_repository_method, create_jpa_query, wrap_transaction, generate_integration_tests]
+- "Implement a new API endpoint in the FeatureController to assign a category to multiple features" → [generate_integration_tests, wrap_transaction, generate_jpa_repository_method]
+- "Implement a new API endpoint that allows users to remove a category from multiple features" → [generate_integration_tests, create_jpa_query, generate_jpa_repository_method, wrap_transaction]
+- "Update the API endpoint to allow searching for features using both categories and tags" → [generate_jpa_repository_method, generate_jpql_repository_method, generate_integration_tests, create_jpa_query]
+- "Implement remember me functionality for /api/authenticate endpoint, allowing users to stay logged in across browsers" → [generate_db_migration, find_liquibase_scripts, generate_integration_tests, wrap_transaction]
+- "Refactor Spring Security to rename a role `ROLE_ADMIN` to `ROLE_ADMINISTRATOR` across the application" → [search_in_files_by_text, replace_text_in_file, rename_refactoring, find_files_by_name_keyword]
+- "Create a Spring AOP aspect to non-invasively log the execution time of methods" → []
+- "In order to modernise piggymetrics it would be nice to upgrade to Junit 5" → [get_project_dependencies, find_config_property]
+- "In order to modernise the codebase, we would like to switch from old version of de" → [generate_integration_tests]
+- "Integrate Ehcache as the primary cache provider within statistics service" → [add_spring_cache, wrap_method_with_cache, add_cache_eviction, generate_integration_tests]
+- "Microservices Architecture: Composite represents an entrypoint, generate DTO" → [generate_dto, generate_dto_mapper]
+- "Implement MongoDB persistence for the Recommendation microservice" → []
+- "Add 'spring-boot-starter-validation' dependency to enable bean validation, introduce configuration class" → [generate_integration_tests, generate_test_scenarios, create_custom_validator, generate_validation_rule]
+- "Add Liquibase to properly manage DB migrations" → [generate_db_migration, find_liquibase_scripts]
+- "Implement CRUD operations for composite products in ProductCompositeService, add new endpoints with OpenAPI" → [scan_endpoints_for_undocumented, generate_integration_tests]
+- "Introduce ReviewMapper interface using MapStruct for mapping logic" → [generate_dto_mapper]
+- "Introduce RecommendationMapper interface using MapStruct for mapping logic" → [generate_dto_mapper]
+- "Introduce ProductMapper interface using MapStruct for mapping logic" → [generate_dto_mapper]
+- "Replace synchronous RestTemplate with WebClient across microservices, refactor repositories to use reactive" → [get_project_dependencies, find_jpa_entities, find_jpa_entity, find_spring_data_repositories, get_jpa_entity_by_name]
+- "Add messaging support across microservices using Spring Cloud Stream with RabbitMQ" → [generate_domain_event, generate_event_listener, publish_event_in_service, find_config_property]
+- "Add Eureka Server module with Spring Cloud Netflix Eureka, integrate Eureka client in all microservices" → [find_config_property, generate_integration_tests]
+- "Properly handle cases when a product is missing by the given ID" → [generate_global_exception_handler]
+- "Introduce the 'rating' field for reviews, update the Review DTOs" → [generate_db_migration, create_or_update_entity_attribute, change_jpa_entity_attribute]
+- "Support an ability to get all reviews by a product, add new endpoint /product-composite/reviews/{productId}" → [generate_integration_tests, scan_endpoints_for_undocumented]
+- "Implement endpoint to retrieve all products with recommendations and reviews" → [generate_integration_tests]
+- "Introduce constraints for the 'productId', 'name', and 'weight' fields, update service to validate" → [generate_integration_tests, create_jpa_query, generate_jpa_repository_method, wrap_transaction, inject_service_validation, generate_service_validation, create_custom_validator, generate_validation_rule]
+- "Configure different ports for microservices to be able to run them all simultaneously" → [find_config_property]
+- "Make the 'composite' service get all the data from other microservices" → [generate_cross_service_client, find_config_property]
+- "Review Service: enable reviews persisting" → [create_jpa_entity, create_spring_data_repository, generate_jpa_entity, generate_jpa_repository, enable_optimistic_locking, add_unique_constraint, create_jpa_query, generate_jpa_repository_method]
+- "We need to ensure that productId / reviewId >= 0, author / subject / content are not blank" → [change_jpa_entity_attribute, create_or_update_entity_attribute, generate_test_scenarios, generate_integration_tests]
+- "Add Flyway dependencies to manage DB schema migrations, add V1__ migration script to create reviews table" → [generate_db_migration, generate_integration_tests]
+- "We need to implement a ChatController to manage chats through the web UI using Spring MVC + Thymeleaf" → [generate_jpa_repository, create_spring_data_repository, generate_integration_tests, generate_test_scenarios]
+- "Use WireMock to mock external API dependencies in your Spring Boot application for integration tests" → [generate_integration_tests, create_new_file, replace_text_in_file, get_file_text_by_path]
+- "Implement integration tests for cross-service client communication" → [generate_integration_tests, generate_cross_service_client]
+- "Update the API base path from `/api` to `/api/v1` in all relevant controllers" → [search_in_files_by_text, replace_text_in_file]
+- "Implement a multi-tenant security system that extends the existing Spring Security configuration" → [generate_integration_tests, create_or_update_entity_attribute, change_jpa_entity_attribute]
+- "Implement a custom authentication provider that delegates authentication to an external SSO API (such as SAML)" → [generate_integration_tests, find_config_property]
+- "Develop a custom Spring Security filter that intercepts incoming HTTP requests, extracts the client's IP address" → [generate_integration_tests, find_config_property]
+- "Implement a security @ControllerAdvice that catches and handles security exceptions" → [generate_global_exception_handler, generate_dto, generate_integration_tests]
+- "Implement a filter that intercepts authentication requests, tracks failed attempts using an in-memory store" → [generate_event_listener, find_config_property]
+- "Enable CSRF Protection in Spring Security Configuration" → [generate_integration_tests, generate_security_test]
+- "Implement Password Policy Validation and Strength Requirements for User" → [create_custom_validator, generate_service_validation, inject_service_validation, generate_validation_rule]
+- "Update UserService to store User password hash and not the actual password" → [generate_integration_tests, create_jpa_query, generate_jpa_repository_method, wrap_transaction]
+- "Create custom validation constraints for User entity for username field to check that username does not contain" → [create_custom_validator, generate_validation_rule, create_jpa_query, generate_jpa_repository_method, generate_jpql_repository_method]
+- "Enable cache management in the Petclinic REST API by implementing automatic eviction on update/delete" → [add_spring_cache, add_cache_eviction, wrap_method_with_cache, schedule_task, generate_integration_tests]
+- "Enhance the global exception handling in ExceptionControllerAdvice by adding handlers for additional exceptions" → [generate_global_exception_handler, generate_integration_tests, generate_test_scenarios]
+- "Implement a new endpoint in the PetRestController to support pagination for the list of pets" → [generate_jpa_repository_method, create_jpa_query, generate_integration_tests]
+- "Implement functionality to upload and manage photos for pets" → [generate_file_deletion_logic]
+- "Create a custom servlet filter named RequestLoggingFilter that logs all incoming HTTP requests" → [create_new_file, replace_text_in_file, execute_terminal_command, execute_run_configuration]
+- "Implement a filter that adds custom headers to all HTTP responses for compliance and monitoring purposes" → [generate_integration_tests]
+- "Implement GET endpoint to find all users, add GET /api/users endpoint returning user list" → [generate_jpa_repository_method, generate_jpql_repository_method, wrap_transaction, generate_integration_tests]
+- "Implement a hybrid caching strategy combining Caffeine and distributed cache" → [add_spring_cache, wrap_method_with_cache, add_cache_eviction, implement_distributed_cache, find_config_property, generate_integration_tests]
+- "Create a Recipe domain entity with id and text fields" → [generate_integration_tests, create_jpa_query, generate_jpa_repository_method, wrap_transaction]
+- "Create a Medication entity that uses a UUID primary key stored in a compact binary form" → [create_jpa_entity, generate_jpa_entity, create_or_update_entity_attribute, create_spring_data_repository, generate_jpa_repository]
+- "Create an abstract BaseAuditable base entity class with fields like createdDate, lastModifiedDate" → [generate_integration_tests]
+- "Create an entity MedicalCondition with a composite PK consisting of columns condition_code and locale" → [generate_integration_tests, create_jpa_query, generate_jpa_repository_method, wrap_transaction]
+- "Create a new Prescription value object as an embeddable record and embed a collection of it within the Visit entity" → [create_or_update_entity_attribute, generate_integration_tests]
+- "Implement pagination for the endpoints that return lists of pets and visits in PetRestController and VisitRestController" → [generate_jpa_repository_method, generate_jpql_repository_method, create_jpa_query]
+- "Refactor the Pet entity to include validation annotations for the birthDate and type fields" → [create_or_update_entity_attribute, change_jpa_entity_attribute, create_custom_validator, generate_validation_rule]
+- "Implement API versioning for the owner and pet controllers by updating the request mapping prefixes" → []
+- "Create a custom constraint annotation for validating address formats in the application" → [create_custom_validator]
+- "Configure app to run correctly as a GraalVM native image with working JPA and Flyway integration" → [get_file_text_by_path, replace_text_in_file, create_new_file, execute_terminal_command]
+- "Create a new embedded entity Address in org" → [generate_integration_tests, create_jpa_query, generate_jpa_repository_method, wrap_transaction]
+- "Add transactional boundaries to the reactive service layer to ensure database operations executed within transactions" → [wrap_transaction, generate_integration_tests]
+- "Make the crash controller reactive and handle exceptions globally using a custom reactive error handler" → [generate_global_exception_handler]
+- "Implement functionality to allow users to add and remove features from their favorites list" → [generate_jpa_entity, create_jpa_entity, generate_jpa_repository, create_spring_data_repository, generate_db_migration, generate_global_exception_handler, create_jpa_query, generate_jpa_repository_method, generate_jpql_repository_method]
+- "Add request ID information from the HTTP request header X-Request-ID to the SLF4J MDC log" → [generate_integration_tests]
+- "Define the data structure for feature dependencies and ensure they are correctly stored in the database" → [create_jpa_entity, generate_jpa_entity, create_or_update_entity_attribute, add_enum_to_entity, create_spring_data_repository, generate_jpa_repository, generate_jpa_repository_method, generate_db_migration, find_jpa_entities, get_jpa_entity_by_name]
+- "Update current AccountResource and implement Password Policy Validation and Strength Requirements" → [create_jpa_entity, create_or_update_entity_attribute, generate_jpa_repository, create_jpa_query, generate_jpa_repository_method, generate_db_migration, find_liquibase_scripts, create_custom_validator, generate_service_validation, find_jpa_entities, get_jpa_entity_by_name, change_jpa_entity_attribute]
+- "Add the productId parameter validation for all endpoints, handle negative productId across all services" → [generate_global_exception_handler, create_custom_validator, generate_service_validation, inject_service_validation]
+- "Add OpenAPI (Swagger) documentation to the Spring Boot service using springdoc-openapi" → [scan_endpoints_for_undocumented]
+- "Review Service: store a date when a review was written" → [create_or_update_entity_attribute, generate_db_migration]
+- "Introduce MedicalCondition as a JPA entity identified by a composite key (condition_code, locale) using @IdClass" → [create_jpa_entity, generate_jpa_entity, create_or_update_entity_attribute, create_spring_data_repository, generate_jpa_repository, generate_db_migration]
+- "Build REST endpoints under /api for owners, pets, and visits that expose standard CRUD" → [find_jpa_entities, get_jpa_entity_by_name, find_spring_data_repositories, create_spring_data_repository, generate_jpa_repository]
+- "Add an email field to the owner data model" → []
+- "Implement a global exception handler for REST controllers to provide a consistent and structured JSON response" → [generate_global_exception_handler, generate_dto]
+- "Configure logging in native images" → [find_config_property]
+- "Start the migration to a reactive stack by transitioning the persistence layer from JPA to R2DBC" → [find_jpa_entities, get_jpa_entity_by_name, find_spring_data_repositories, create_spring_data_repository, generate_jpa_repository]
+- "Since R2DBC does not provide lazy or eager loading like JPA, introduce a reactive service layer" → [find_spring_data_repositories, generate_jpa_repository, create_spring_data_repository, find_jpa_entities, get_jpa_entity_by_name]
+- "Spring WebFlux does not provide native pagination support" → [generate_jpa_repository_method, generate_jpql_repository_method, create_jpa_query]
+- "Upgrade Spring Boot to the latest 3.x version" → [get_file_problems, find_config_property]
+- "Create a new Medication JPA entity that uses a UUID as its primary key" → [create_jpa_entity, create_spring_data_repository, generate_jpa_entity, generate_jpa_repository]
+- "Refactor the VisitController to use a DTO instead of binding the Visit entity directly" → [generate_dto, generate_dto_mapper, refactor_dto]
+- "Detect and resolve the N+1 select problem in the JPA entity relationships" → [get_jpa_entity_by_name, find_jpa_entities, find_spring_data_repositories, generate_jpa_repository_method, generate_jpql_repository_method, create_jpa_query, generate_integration_tests]
+- "Implement comprehensive event deduplication and idempotency system for the Feature Service" → [generate_db_migration, generate_jpa_entity, create_jpa_entity, generate_event_listener, generate_jpa_repository, create_spring_data_repository]
+- "Utilize Spring's caching abstraction to cache the results of frequently repeated queries" → [add_spring_cache, wrap_method_with_cache, add_cache_eviction]
+- "Migrate existing blocking Spring MVC controllers to reactive Spring WebFlux controllers" → []
+
+## Fallback Reasoning (when no confident match is found)
+
+If the issue statement cannot be confidently matched, infer tools from these rules:
 
 - **New entity needed** → `create_jpa_entity` + `generate_jpa_entity`
 - **New repository needed** → `create_spring_data_repository` + `generate_jpa_repository`
