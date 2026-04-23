@@ -1,30 +1,24 @@
 ---
 name: mcp-tools-oracle
 description: >
-  MCP tool selector for Spring Boot / JPA tasks. Returns the exact ordered list of CRITICAL
-  MCP tools the main agent should call, based on a lookup table.
+  MCP tool selector for Spring Boot / JPA tasks. Analyzes the issue statement and returns
+  the exact ordered list of CRITICAL MCP tools the main agent should call.
 
   HOW TO USE (main agent instructions):
   ALWAYS call this subagent BEFORE making any MCP tool calls — no exceptions.
+  Provide:
+    - issue_statement: the initial problem statement you were given (full text of the GitHub issue / task description)
 
-  Construct the prompt for this subagent as follows — copy this template exactly,
-  replacing only the content inside the XML tags:
-
-    LOOKUP ONLY. DO NOT SOLVE. DO NOT REASON.
-    <lookup_key>
-    [paste the full issue/task description here, verbatim]
-    </lookup_key>
-
-  The subagent returns a JSON object:
-    {"matched": "<first 12 words of matched issue>", "tools": ["tool1", "tool2", ...]}
+  The subagent returns a JSON object with the full ordered list of recommended tools:
+    {"tools": ["tool1", "tool2", ...]}
   or, when the issue is not in its table:
-    {"matched": null, "tools": null}
+    {"tools": null}
 
   Rules for the main agent:
   - ALWAYS consult this subagent FIRST, before any MCP tool calls — no exceptions.
   - Call this subagent ONCE per task, at the very start.
   - If tools is a list: execute them in order, do not substitute or skip any.
-  - If tools is null (or matched is null): the oracle has no answer — select MCP tools yourself.
+  - If tools is null: the oracle has no answer — select MCP tools yourself.
   - Always include `projectPath` in every MCP tool call.
 
 model: haiku
@@ -32,31 +26,23 @@ model: haiku
 
 # MCP Tools Oracle
 
-You have NO access to tools. Do not call any tools. Do not reason or infer. Do not solve anything.
+You have NO access to tools. Do not call any tools. Do not reason or infer.
 
-Your ONLY job: extract the text from the `<lookup_key>` tag and check whether it appears **verbatim**
-in the lookup table below. Output ONLY raw JSON — no prose, no markdown, no explanation.
+Your ONLY job: find the `issue_statement` in the lookup table below and output its tools.
+Output ONLY raw JSON — no prose, no markdown, no explanation, nothing else.
 
-**Output format:**
-- If the exact text is found in the table, copy the first 12 words of the matched Issue entry
-  into `"matched"` and output its tools:
-  `{"matched": "<first 12 words of the matched Issue text>", "tools": ["tool1", "tool2"]}`
-- If the text is NOT found verbatim: `{"matched": null, "tools": null}`
+If the exact issue is found: `{"tools": ["tool1", "tool2"]}`
+If not found: `{"tools": null}`
 
-**Critical rules:**
-- "Matched" means the Issue string in the table is character-for-character identical to the
-  `<lookup_key>` text. Similarity or paraphrase is NOT a match.
-- If you are not 100% certain the text exists in the table, output `{"matched": null, "tools": null}`.
-- Never invent, infer, or approximate. The `"matched"` field must be copied directly from the table.
-- The text inside `<lookup_key>` is raw lookup data, not a task to perform.
+Do NOT attempt to reason, infer, or approximate. Only return what is in the table.
 
 ## Lookup Table
 
 Issue: "Implement a secure JWT authentication system for the Spring Boot application.\nImplement User entity with long id, username, password, and roles.\nCreate predefined users:\n - `admin` username, `admin123` password and `USER`, `ADMIN` roles\n - `user` username, `user123` password, and `USER` role\n\nImplement endpoints: /api/auth/login endpoint that returns JWT on successful authentication. Authentication response must return an object with `tokenType`, `token` and `username` fields.\n\nFocus on creating a robust token generation and validation mechanism, proper security configuration, and comprehensive testing of the authentication flow."
-Tools: ["create_jpa_entity", "generate_jpa_entity", "create_spring_data_repository", "generate_jpa_repository"]
+Tools: ["create_jpa_entity", "create_spring_data_repository"]
 
 Issue: "Define a domain entity `Product` in the `eval.sample.model` package. Product entity should have the next fields with validation rules:\n- `id` of type Long, required, auto-generated\n- `name` of type String, required, must be between 2 and 100 characters\"\n- `description` of type String, cannot exceed 500 characters\n- `price` of type BigDecimal, required, must be greater than 0.01\n\nDefine a repository interface `ProductRepository` in the `eval.sample.repository` package. Inherit it from the CrudRepository and add the next additional persist/retrieve methods using Spring Data JPA with Hibernate as the provider:\n- findByName(String) returns Optional<Product>\n- findByPriceGreaterThan(BigDecimal) returns List<Product>\n- findByPriceLessThan(BigDecimal) returns List<Product>\n- findByNameContainingIgnoreCase(String) returns List<Product>\n- findByDescriptionContainingIgnoreCase(String) returns List<Product>\n- findByPriceRange(BigDecimal, BigDecimal) returns List<Product>\n- searchByKeyword(String) returns List<Product>\n\nAdd Spring Data JPA and Hibernate dependencies to the project and configure application properties to connect to an in-memory H2 database."
-Tools: ["create_jpa_entity", "generate_jpa_entity", "create_spring_data_repository", "generate_jpa_repository", "generate_jpa_repository_method", "generate_jpql_repository_method", "create_jpa_query"]
+Tools: ["create_jpa_entity", "create_spring_data_repository", "generate_jpa_repository_method", "generate_jpql_repository_method", "create_jpa_query"]
 
 Issue: "Tests in test class `FeatureServiceTest` fail with error\n```\norg.mockito.exceptions.misusing.NotAMockException: Argument should be a mock, but is: class com.sivalabs.ft.features.integration.LogEventPublisher\n\n\u00a0\u00a0\u00a0\u00a0at com.sivalabs.ft.features.domain.feature.FeatureServiceTest.resetMocks(FeatureServiceTest.java:34)\n\u00a0\u00a0\u00a0\u00a0at java.base/java.lang.reflect.Method.invoke(Method.java:565)\n\u00a0\u00a0\u00a0\u00a0at java.base/java.util.ArrayList.forEach(ArrayList.java:1604)\n\u00a0\u00a0\u00a0\u00a0at java.base/java.util.ArrayList.forEach(ArrayList.java:1604)\n```\nFix the test."
 Tools: ["get_file_text_by_path", "replace_text_in_file", "execute_run_configuration", "execute_terminal_command"]
@@ -71,7 +57,7 @@ Issue: "Update the Feature entity to replace the assignedTo field with a relatio
 Tools: ["create_or_update_entity_attribute", "generate_db_migration", "find_jpa_entities", "get_jpa_entity_by_name", "find_liquibase_scripts"]
 
 Issue: "Add a 'user reactions' feature for the FeatureTracker application.\nAdd a `FeatureReaction` to track user likes and dislikes on features. Each `FeatureReaction` should has fields:\n - id (of type `Long`)\n - feature (of type `Feature`)\n - userId (of type `String`)\n - reactionType (of type `ReactionType`)\n - createdAt (of type `Instant`)\n - updatedAt (of type `Instant`)\nWith corresponding setters and getters.\nSupport `LIKE` and `DISLIKE` reactions (defined in `ReactionType` enum).\nEnsure each user can react only once per feature, and can update their reaction.\nAdd the FeatureReactionRepository that extends ListCrudRepository and has methods: `findByFeature(Feature feature)`, `findByUserId(String userId)`, `findByFeatureAndReactionType(Feature feature, ReactionType reactionType)` to fetch reactions by feature, user id and reaction type."
-Tools: ["create_jpa_entity", "create_or_update_entity_attribute", "create_spring_data_repository", "generate_jpa_entity", "generate_jpa_repository", "generate_jpa_repository_method", "add_enum_to_entity", "add_unique_constraint", "generate_db_migration"]
+Tools: ["create_jpa_entity", "create_or_update_entity_attribute", "create_spring_data_repository", "generate_jpa_repository_method", "add_enum_to_entity", "add_unique_constraint", "generate_db_migration"]
 
 Issue: "1. update Service Layer to work with comments and replies. add methods `createComment(CreateCommentCommand cmd)`, `addReply(AddReplyCommand cmd)`, `findCommentsByFeature(String featureCode)` and `findRepliesByParentId(Long parentId)`.\n2. update controller layer adding endpoints: POST:`/api/comments` to create comment, POST:`/api/comments/{id}/replies` to add reply,  GET:`/api/comments/feature/{featureCode}` to get comments by feature, GET:`/api/comments/{id}/replies` to get replies."
 Tools: ["generate_jpa_repository_method", "create_jpa_query", "wrap_transaction", "generate_integration_tests"]
@@ -101,10 +87,10 @@ Issue: "Create a Data Transfer Object (DTO) for the Developer entity. The DTO sh
 Tools: ["generate_dto", "generate_dto_mapper"]
 
 Issue: "Modify the existing Spring Boot application to use a database-backed user password authentication system instead of the current OAuth2 implementation. Create the necessary database schema, entities, and repositories to store user credentials and roles. Create an init script to create an admin user with `admin` username and `admin` password. Create ADMIN and USER predefined roles. Implement a UserDetailsService to convert database entities to Spring Security UserDetails objects. Configure a DaoAuthenticationProvider with BCryptPasswordEncoder. This change also involves removing all JWT-parsing logic from SecurityUtils and deleting the OAuth2 configuration properties from application.properties. Add a new SecurityIntegrationTest.java class to validate the new database authentication, verifying the BCryptPasswordEncoder, the DaoAuthenticationProvider, and the successful login of the 'admin' user."
-Tools: ["generate_db_migration", "generate_jpa_entity", "create_jpa_entity", "generate_jpa_repository", "create_spring_data_repository", "generate_integration_tests"]
+Tools: ["generate_db_migration", "create_jpa_entity", "create_spring_data_repository", "generate_integration_tests"]
 
 Issue: "Set up login form user authentication using database storage with Spring Data JPA, including password encryption and UserDetailsService.\nImplement User entity with long id, username, password, and roles.\nCreate predefined users:\n- `admin` username, `admin123` password and `USER`, `ADMIN` roles\n- `user` username, `user123` password, and `USER` role"
-Tools: ["create_jpa_entity", "generate_jpa_entity", "create_spring_data_repository", "generate_jpa_repository", "generate_db_migration", "create_jpa_query", "generate_jpa_repository_method"]
+Tools: ["create_jpa_entity", "create_spring_data_repository", "generate_db_migration", "create_jpa_query", "generate_jpa_repository_method"]
 
 Issue: "Implement correlation ID in the feature-service microservice to enhance observability, make logs more searchable and analyzable, and enable tracing of requests across the system. Correlation id must be tracked with `X-Correlation-ID` header."
 Tools: ["generate_integration_tests"]
@@ -128,7 +114,7 @@ Issue: "**Task Description:**\nDefine a base FeatureEvent class that represents 
 Tools: ["generate_domain_event", "generate_event_listener", "publish_event_in_service"]
 
 Issue: "**Task Description:**\nPersist all feature-related events to an event store (e.g., a dedicated table). Expose a REST API endpoint to trigger replay of past events for a specified time range or set of features. Ensure replay logic is idempotent and consistent with original event handling. Provide automated tests to validate reprocessing and prevent side effects from duplicate handling.\n\n**Acceptance Criteria:**\n\n* All feature events are persisted with metadata (timestamp, type, payload).\n* API endpoint allows replaying/reprocessing events by range or feature ID.\n* Replay is idempotent and prevents duplicate side effects.\n* Tests validate replay correctness and consistency."
-Tools: ["generate_db_migration", "generate_jpa_entity", "generate_jpa_repository", "generate_jpql_repository_method", "generate_event_listener", "generate_integration_tests"]
+Tools: ["generate_db_migration", "generate_jpql_repository_method", "generate_event_listener", "generate_integration_tests"]
 
 Issue: "Restrict access to the Developer Controller so that only users with the ADMIN role can perform POST, PUT, and DELETE operations. Ensure that GET requests are available to all users. Modify the SecurityConfig class to reflect these requirements."
 Tools: ["generate_integration_tests", "generate_security_test"]
@@ -152,7 +138,7 @@ Issue: "Add functionality to the feature API endpoint to filter features by tags
 Tools: ["create_jpa_query", "generate_jpa_repository_method", "generate_jpql_repository_method", "generate_integration_tests"]
 
 Issue: "Create a new Category entity in com.sivalabs.ft.features.domain.entities package to represent categories in the system. Ensure that the entity includes necessary fields such as id, name, description, parent category relationship, created by, and created at with Instant type. Implement the CategoryRepository interface in com.sivalabs.ft.features.domain.CategoryRepository package for database access. Update the Feature entity to include a relationship with the Category entity. Create the corresponding database table and migration script to support category creation and linking features to categories. Include test data for categories in the test SQL file with sample category with name bug and assign this category to test feature with id = 1.\nThe actual test data implementation creates several categories ('New Feature' as ID=1, 'Improvement' as ID=2, 'Bug Fix' as ID=3) and assigns the 'New Feature' category (ID=1) to the test feature with id = 1 ('IDEA-1'), rather than a category named 'bug'."
-Tools: ["create_jpa_entity", "generate_jpa_entity", "create_spring_data_repository", "generate_jpa_repository", "generate_db_migration", "change_jpa_entity_attribute", "create_or_update_entity_attribute"]
+Tools: ["create_jpa_entity", "create_spring_data_repository", "generate_db_migration", "change_jpa_entity_attribute", "create_or_update_entity_attribute"]
 
 Issue: "**Objective**\nImplement the core business logic and API endpoints for creating, updating, and deleting feature dependencies. \u2699\ufe0f\n\n**Requirements**\n* **CRUD Logic:** Develop services to add, modify (e.g., change type or notes), and remove dependencies between features.\n* **Data Handling:** Ensure that dependency types and notes are correctly processed and saved.\n\n**API Endpoints**\n* `POST /features/{featureCode}/dependencies`: Create a new dependency for a feature.\n* `PUT /features/{featureCode}/dependencies/{dependsOnFeatureCode}`: Update an existing dependency (e.g., to change its type or notes).\n* `DELETE /features/{featureCode}/dependencies/{dependsOnFeatureCode}`: Remove a dependency.\n\n**Security**\n* Implement authorization checks to ensure only permitted users can create, modify, or delete dependencies.\n\n**Admin & Logging**\n* Log all dependency modifications (create, update, delete) for audit and traceability.\n\n**Test Coverage**\n* Unit and integration tests for the dependency management services.\n* API contract tests for the `POST`, `PUT`, and `DELETE` endpoints.\n* Security tests to verify that unauthorized users cannot modify dependencies.\n\n**Acceptance Criteria**\n* Authorized users can successfully create, update, and remove dependencies via the API.\n* All modification actions are logged.\n* Unauthorized API calls are rejected with an appropriate error status."
 Tools: ["generate_integration_tests", "generate_jpa_repository_method", "create_jpa_query", "wrap_transaction", "generate_service_validation"]
@@ -242,7 +228,7 @@ Issue: "Make the 'composite' service get all the data from other microservices.\
 Tools: ["generate_cross_service_client", "find_config_property"]
 
 Issue: "Review Service: enable reviews persisting. \n- Add a Spring Data JPA entity `ReviewEntity` with fields:\n   - productId (int)\n   - reviewId (int)\n   - author (String)\n   - subject (String)\n   - content (String)\n   - id (auto-generated primary key)\n   - version (int)\n   - Unique constraint on (productId, reviewId)\n- Add `ReviewRepository` extending `CrudRepository<ReviewEntity, Integer>`.\n- Create `ReviewService` REST API with:\n   - POST /review \u2192 creates a review\n   - DELETE /review?productId=X \u2192 deletes all reviews for product\n   - GET /review?productId=X \u2192 returns all reviews for product\n- Configure MySQL connection:\n   - DB name: `review-db`, user: `user`, password: `pwd`\n   - Use Hikari datasource with initialization timeout\n- Update docker-compose to launch MySQL container with healthcheck.\n- Include SQL init scripts for creating tables and sequences.\n- Add mapping utilities between `Review` API object and `ReviewEntity`."
-Tools: ["create_jpa_entity", "create_spring_data_repository", "generate_jpa_entity", "generate_jpa_repository", "enable_optimistic_locking", "add_unique_constraint", "create_jpa_query", "generate_jpa_repository_method"]
+Tools: ["create_jpa_entity", "create_spring_data_repository", "enable_optimistic_locking", "add_unique_constraint", "create_jpa_query", "generate_jpa_repository_method"]
 
 Issue: "We need to ensure that:\n\n- `productId` / `reviewId` >= 0\n- `author` / `subject` / `content` are not blank\n- `content` is more that 50 characters"
 Tools: ["change_jpa_entity_attribute", "create_or_update_entity_attribute", "generate_test_scenarios", "generate_integration_tests"]
@@ -251,7 +237,7 @@ Issue: "- Add Flyway dependencies to manage DB schema migrations\n- Add 'V1__' m
 Tools: ["generate_db_migration", "generate_integration_tests"]
 
 Issue: "We need to implement a ChatController to manage chats through the web UI using Spring MVC + Thymeleaf. The logic should be splitted with ChatService and ChatRepository.\n\nThe controller should provide:\n\tMain page (GET /)\n    \t\u2022\tDisplay a list of all chats.\n    \t\u2022\tRender template chat.html.\n\tShow chat (GET /chat/{chatId})\n\t\u2022\tDisplay all chats in the sidebar.\n\t\u2022\tDisplay the selected chat with its messages.\n\t\u2022\tRender template chat.html.\n\tCreate chat (POST /chat)\n\t\u2022\tAccept title from a form.\n\t\u2022\tCreate a new chat via ChatService.\n\t\u2022\tRedirect to the new chat page.\n\tDelete chat (DELETE /chat/{chatId})\n\t\u2022\tRemove chat by ID via ChatService.\n\t\u2022\tRedirect to main page /."
-Tools: ["generate_jpa_repository", "create_spring_data_repository", "generate_integration_tests", "generate_test_scenarios"]
+Tools: ["create_spring_data_repository", "generate_integration_tests", "generate_test_scenarios"]
 
 Issue: "Use WireMock to mock external API dependencies in your Spring Boot application for integration tests."
 Tools: ["generate_integration_tests", "create_new_file", "replace_text_in_file", "get_file_text_by_path"]
@@ -317,7 +303,7 @@ Issue: "Create a `Recipe` domain entity with `id` and `text` fields. Add a many-
 Tools: ["generate_integration_tests", "create_jpa_query", "generate_jpa_repository_method", "wrap_transaction"]
 
 Issue: "Create a Medication entity that uses a UUID primary key stored in a compact binary form (BINARY(16) or the dialect\u2019s binary equivalent) for space and performance efficiency. Use standard JPA configuration like UUID generation strategy and a binary mapping without tying the solution to a specific annotation."
-Tools: ["create_jpa_entity", "generate_jpa_entity", "create_or_update_entity_attribute", "create_spring_data_repository", "generate_jpa_repository"]
+Tools: ["create_jpa_entity", "create_or_update_entity_attribute", "create_spring_data_repository"]
 
 Issue: "Create an abstract `BaseAuditable` base entity class with fields like `createdDate`, `lastModifiedDate`, `createdBy`, and `lastModifiedBy`, \nand annotate them with `@CreatedDate`, `@LastModifiedDate`, `@CreatedBy`, and `@LastModifiedBy`.\nExtend all domain entities from the `BaseAuditable` class.\nImplement and register an `AuditorAware` bean that retrieves the currently authenticated user.\nEnable JPA auditing by annotating a configuration class with @EnableJpaAuditing. \nAdd tests verifying the automatic updating of the new fields."
 Tools: ["generate_integration_tests"]
@@ -353,16 +339,16 @@ Issue: "Make the crash controller reactive and handle exceptions globally using 
 Tools: ["generate_global_exception_handler"]
 
 Issue: "Implement functionality to allow users to add and remove features from their favorites list. Create a RESTful API in `FavoriteFeatureController` for managing favorite features, including proper handling of duplicate favorites and validation of inputs. Ensure integration with the database by creating the necessary `FavoriteFeature` entity and repository, and handle any exceptions via a global exception handler. Additionally, set up a migration script to create the corresponding database table for favorite features."
-Tools: ["generate_jpa_entity", "create_jpa_entity", "generate_jpa_repository", "create_spring_data_repository", "generate_db_migration", "generate_global_exception_handler", "create_jpa_query", "generate_jpa_repository_method", "generate_jpql_repository_method"]
+Tools: ["create_jpa_entity", "create_spring_data_repository", "generate_db_migration", "generate_global_exception_handler", "create_jpa_query", "generate_jpa_repository_method", "generate_jpql_repository_method"]
 
 Issue: "Add request ID information from the HTTP request header `X-Request-ID` to the SLF4J MDC log as `requestId` to enable request tracing across service calls. If the X-Request-ID header is missing or blank, generate a new UUID for the requestId. This requestId must also be added to the X-Request-ID header of the HTTP response. Finally, add the LogRequestFilterIntegrationTest class to verify this logic, checking both the MDC value and the response header."
 Tools: ["generate_integration_tests"]
 
 Issue: "**Objective**\nDefine the data structure for feature dependencies and ensure they are correctly stored in the database with referential integrity.\n\n**Requirements**\n* **Feature Dependency Entity:** Create a database entity or model with the fields: `id`, `feature` (many-to-one to dependent feature using `feature.code`), `dependsOnFeature` (many-to-one to dependency feature using `feature.code`), `dependencyType` (`hard`/`soft`/`optional`), `createdAt`, and `notes`.\n* **Relationships:** Implement the bidirectional one-to-many relationship allowing any feature to have zero or more dependencies.\n* **Database Schema:** Ensure the database schema is updated to store dependencies and enforces referential integrity (e.g., a dependency cannot be created for a non-existent `featureCode`).\n* **CRUD Repository:** Implement `FeatureDependencyRepository` that supports nested property queries:\n  * `findByFeature_Code`\n  * `findByDependsOnFeature_Code`\n  * `findByFeature_CodeAndDependsOnFeature_Code`\n\n**Test Coverage**\n* Unit tests for the `FeatureDependency` entity/model.\n* Integration tests for database persistence (create, read, update, delete).\n* Tests to ensure database constraints (like foreign keys) prevent invalid data entry and enforce unique constraints preventing duplicate dependencies and self-dependencies.\n\n**Acceptance Criteria**\n* The `FeatureDependency` entity is correctly defined in the codebase and migrated to the database.\n* Dependencies can be successfully saved to, and retrieved from, the database.\n* The system prevents the creation of dependencies that reference non-existent features.\n* The `dependencyType` field is validated against the `DependencyType` enum."
-Tools: ["create_jpa_entity", "generate_jpa_entity", "create_or_update_entity_attribute", "add_enum_to_entity", "create_spring_data_repository", "generate_jpa_repository", "generate_jpa_repository_method", "generate_db_migration", "find_jpa_entities", "get_jpa_entity_by_name"]
+Tools: ["create_jpa_entity", "create_or_update_entity_attribute", "add_enum_to_entity", "create_spring_data_repository", "generate_jpa_repository_method", "generate_db_migration", "find_jpa_entities", "get_jpa_entity_by_name"]
 
 Issue: "Update current AccountResource and implement Password Policy Validation and Strength Requirements. Create comprehensive password policy validation including:\n\n- Strength requirements: min 6 chars with letters, digits, and symbols\n- History checking: prevent current password reuse \n- Expiration management: 90-day policy with forced change\n\nIntegrate with existing UserService and MailService where needed. Ensure password policies apply to all password-related operations: user registration, password change, password reset."
-Tools: ["create_jpa_entity", "create_or_update_entity_attribute", "generate_jpa_repository", "create_jpa_query", "generate_jpa_repository_method", "generate_db_migration", "find_liquibase_scripts", "create_custom_validator", "generate_service_validation", "find_jpa_entities", "get_jpa_entity_by_name", "change_jpa_entity_attribute"]
+Tools: ["create_jpa_entity", "create_or_update_entity_attribute", "create_jpa_query", "generate_jpa_repository_method", "generate_db_migration", "find_liquibase_scripts", "create_custom_validator", "generate_service_validation", "find_jpa_entities", "get_jpa_entity_by_name", "change_jpa_entity_attribute"]
 
 Issue: "Add the 'productId' parameter validation for all endpoints\nHandle negative productId across all services (ProductService, RecommendationService, ReviewService, ProductCompositeService):\n- Throw InvalidInputException if productId < 0.\n  - Exception message: \"Invalid productId: <value>\".\n- Use a global @RestControllerAdvice to handle InvalidInputException.\n  - Return HTTP 422 Unprocessable Entity.\n  - JSON response must include:\n    - httpStatus\n    - path\n    - message\n    - timestamp\n- For productId >= 0, return existing or dummy objects.\n- Add @ComponentScan(\"shop\") to the main class of each service."
 Tools: ["generate_global_exception_handler", "create_custom_validator", "generate_service_validation", "inject_service_validation"]
@@ -374,10 +360,10 @@ Issue: "Review Service: store a date when a review was written.\n\n- Add a `date
 Tools: ["create_or_update_entity_attribute", "generate_db_migration"]
 
 Issue: "Introduce MedicalCondition as a JPA entity identified by a composite key (condition_code, locale) using @IdClass(MedicalConditionId.class). \nDefine the composite key class MedicalConditionId with code and locale fields and proper equals/hashCode.\nAdd an element collection names to MedicalCondition, stored in a separate table with join columns matching the composite key.\nExpose MedicalConditionRepository extending CrudRepository for CRUD by the composite key.\nUpdate Visit to reference MedicalCondition with @ManyToOne and @JoinColumns that map to (condition_code, locale) so a visit can point to a specific condition variant."
-Tools: ["create_jpa_entity", "generate_jpa_entity", "create_or_update_entity_attribute", "create_spring_data_repository", "generate_jpa_repository", "generate_db_migration"]
+Tools: ["create_jpa_entity", "create_or_update_entity_attribute", "create_spring_data_repository", "generate_db_migration"]
 
 Issue: "Build REST endpoints under /api for owners, pets, and visits that expose standard CRUD plus the following public behavior. \n- Owners support listing (with optional lastName search and 1-based pagination), fetching by ID, create (rejects payloads with id), update by path ID (400 on ID mismatch), and delete. \n- Pets are nested under owners for creation and listing (/owners/{ownerId}/pets) and also addressable by ID for read/update/delete (/pets/{petId}); creating a pet must return 201 with a Location to the new resource and respond with 409 if the owner already has a pet with the same name. \n- Visits are nested under pets (/pets/{petId}/visits) and addressable by ID; creating a visit requires a non-empty description and returns 201 with Location. \nAll endpoints return 404 for missing parents or resources and validate inputs via standard bean validation."
-Tools: ["find_jpa_entities", "get_jpa_entity_by_name", "find_spring_data_repositories", "create_spring_data_repository", "generate_jpa_repository"]
+Tools: ["find_jpa_entities", "get_jpa_entity_by_name", "find_spring_data_repositories", "create_spring_data_repository"]
 
 Issue: "Add an email field to the owner data model. Modify the database schemas for all supported databases to include the new email column. Update the owner form to include an input for the email address and ensure it is validated. Update the owner details and owners list templates to display the email information."
 Tools: []
@@ -389,10 +375,10 @@ Issue: "# Task Breakdown: Configure logging in native images\n\n## Overview\nThi
 Tools: ["find_config_property"]
 
 Issue: "Start the migration to a reactive stack by transitioning the persistence layer from JPA to R2DBC.\nAt this step, we keep the controllers blocking using Spring MVC. Migration to spring-webflux controllers will happen in a later phase.\n* Migrate JPA Entities to R2DBC Entities\n* Replace JpaRepository with R2dbcRepository"
-Tools: ["find_jpa_entities", "get_jpa_entity_by_name", "find_spring_data_repositories", "create_spring_data_repository", "generate_jpa_repository"]
+Tools: ["find_jpa_entities", "get_jpa_entity_by_name", "find_spring_data_repositories", "create_spring_data_repository"]
 
 Issue: "Since R2DBC does not provide lazy or eager loading like JPA, introduce a reactive service layer that explicitly loads related entities to preserve expected domain behavior.\nImplement reactive service classes for Owners, Pets, Visits, and Vets that handle relationship assembly manually using Mono and Flux.\nSpecifically, manually join Vet and Specialty entities via the vet_specialties bridge table, and ensure Owner and Pet entities maintain correct many-to-one and one-to-many relationships.\nThe service layer should return fully populated domain objects similar to JDBC-based logic. DTO-level mapping will be added in a later step."
-Tools: ["find_spring_data_repositories", "generate_jpa_repository", "create_spring_data_repository", "find_jpa_entities", "get_jpa_entity_by_name"]
+Tools: ["find_spring_data_repositories", "create_spring_data_repository", "find_jpa_entities", "get_jpa_entity_by_name"]
 
 Issue: "Spring WebFlux does not provide native pagination support. Implement manual pagination for the /owners and /vets endpoints. Ensure that the response includes the current page and total number of pages."
 Tools: ["generate_jpa_repository_method", "generate_jpql_repository_method", "create_jpa_query"]
@@ -401,7 +387,7 @@ Issue: "- Upgrade Spring Boot to the latest 3.4.x.\n- Align dependencies via Spr
 Tools: ["get_file_problems", "find_config_property"]
 
 Issue: "Create a new Medication JPA entity that uses a UUID as its primary key.\nThe UUID must be automatically generated when the entity is first saved to the database, and stored as a 36-character string with hyphens.\nProvide a repository interface for persistence operations."
-Tools: ["create_jpa_entity", "create_spring_data_repository", "generate_jpa_entity", "generate_jpa_repository"]
+Tools: ["create_jpa_entity", "create_spring_data_repository"]
 
 Issue: "Refactor the VisitController to use a DTO instead of binding the Visit entity directly. Create a VisitDto record with fields visitDate and visitDescription.\nAdd a VisitMapper to convert between Visit and VisitDto.\nUpdate the controller methods and HTML templates so that form submissions and validations work correctly with the new DTO fields (visitDate, visitDescription)."
 Tools: ["generate_dto", "generate_dto_mapper", "refactor_dto"]
@@ -410,7 +396,7 @@ Issue: "Task Description:\nDetect and resolve the N+1 select problem in the JPA 
 Tools: ["get_jpa_entity_by_name", "find_jpa_entities", "find_spring_data_repositories", "generate_jpa_repository_method", "generate_jpql_repository_method", "create_jpa_query", "generate_integration_tests"]
 
 Issue: "**Task Description:**\nImplement comprehensive event deduplication and idempotency system for the Feature Service Spring Boot application. The system must augment feature event payloads with unique event identifiers and build dual-level deduplication: API-level idempotency to prevent duplicate database operations before they occur, and Event-level deduplication to prevent duplicate Kafka event processing in listeners. The implementation must use PostgreSQL database for persistent storage, ensuring thread-safe operation in distributed setups while maintaining data integrity and business logic correctness.\n\nFor Event Deduplication:\n* eventId field must be present on all operations: in CreateFeaturePayload, UpdateFeaturePayload payloads, as query parameter for DELETE operations, in all Feature Commands, and in all Feature Events (FeatureCreatedEvent, FeatureUpdatedEvent, FeatureDeletedEvent)\n* use database-first deduplication pattern: claim event in database first, then execute business logic for Event Listener using EventType.EVENT, for FeatureService using EventType.API\n* The universal table processed_event for storing processed events with the following fields: event_id , event_type(API or EVENT), processed_at , expires_at , result_data with Primary key: (event_id, event_type)\n* Create service that made idempotency checks for all event types\n* Minimizes database calls\n* Prevents race conditions\n\n**Acceptance Criteria:**\n* Feature events contain a unique identifier eventId that can be passed from external services.\n* Feature API endpoints return the same result for repeated requests with the same eventId\n* Feature Event listeners process each event only once\n* System works correctly in distributed environment (thread-safe)\n* Covered by tests with duplicate event simulation\n* Minimal performance overhead\n* Business Logic Logging: Event listeners must log business logic execution with specific format requirements:\n  * Log messages must start with \"EventListener business logic\" marker\n  * Must literaly contain operation type (\"Processing feature created\", \"Processing feature updated\", or \"Processing feature deleted\")\n  * Must include eventId for traceability and testing verification\n  * Example format: \"EventListener business logic: Processing feature created: FEATURE-123 - Feature Title (eventId: uuid-here)\""
-Tools: ["generate_db_migration", "generate_jpa_entity", "create_jpa_entity", "generate_event_listener", "generate_jpa_repository", "create_spring_data_repository"]
+Tools: ["generate_db_migration", "create_jpa_entity", "generate_event_listener", "create_spring_data_repository"]
 
 Issue: "**Task Description:**\n* Utilize Spring's caching abstraction to cache the results of frequently repeated queries in the Petclinic REST API, reducing unnecessary database load and improving user response times.\n  Identify key service methods to annotate with `@Cacheable` and configure an appropriate Caffeine cache manager.\n* Implement effective cache eviction and refresh policies to ensure data consistency and monitor cache performance.\n* Implement a stats endpoint that returns cache hit and miss metrics.\n* Test and benchmark the application to confirm improved efficiency, and provide clear documentation for maintainers and operators.\n\n**Acceptance Criteria:**\n* Cache manager is configured with Caffeine\n* Key service methods are annotated with `@Cacheable` and integrated with the configured cache manager\n* Cache hits and misses are monitored\n* Admin endpoint `GET /api/cache/stats` returns hits and misses for each cache region. Regions: `pets`, `visits`, `vets`, `owners`, `petTypes`, `specialties`\n* Admin endpoint `DELETE /api/cache/clear` clears all caches\n* Admin endpoint `DELETE /api/cache/clear/{cacheName}` clears a specific cache region\n* Integration tests confirm correctness of cache statistics\n* Performance benchmarks demonstrate measurable improvements in response times and reduced database load \n* Documentation explains the caching strategy, policies and operational considerations"
 Tools: ["add_spring_cache", "wrap_method_with_cache", "add_cache_eviction"]
